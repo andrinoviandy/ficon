@@ -1,0 +1,7 @@
+# EditorConfig helps developers define and maintain consistent coding styles
+# across different editors and IDEs.
+root = true
+
+[*]
+indent_style = space
+indent_size = 2

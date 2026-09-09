@@ -1,0 +1,24 @@
+version: "3.9"
+
+services:
+  n2n-backend:
+    container_name: n2n-backend
+    build:
+      context: ./n2n-backend
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+    volumes:
+      - ./n2n-backend:/app
+      - /app/node_modules
+    command: npm start
+
+  n2n-fe:
+    container_name: n2n-fe
+    build:
+      context: ./n2n-fe
+    ports:
+      - "80:80"
+    depends_on:
+      - n2n-backend

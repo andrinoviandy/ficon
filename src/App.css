@@ -1,0 +1,191 @@
+.burger-icon {
+  width: 25px;
+  height: 5px;
+  background-color: black;
+  margin: 4px 0;
+}
+
+.shadow-all {
+  box-shadow: 0 0 25px -10px;
+}
+
+.eye-position {
+  right: 4rem;
+  top: 20.2rem;
+
+  @media screen and (max-width: 379px) {
+    top: 21.5rem;
+  }
+}
+
+:where(.menu li:not(.menu-title, .disabled) > *:not(ul, details, .menu-title)):not(summary, .active, .btn):focus {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+
+.calendarWrap {
+  /* display: inline-block; */
+  position: relative;
+}
+
+.rdrDateRangePickerWrapper {
+  display: flex !important;
+  position: absolute;
+  right: -100%;
+  top: 40px;
+  /* border: 1px solid #ccc; */
+  box-shadow: 0px 0px 8px 2px rgb(0 0 0 / 0.1);
+  z-index: 999;
+  background-color: #fff;
+  width: 260%;
+  padding: 10px;
+  /* border-radius: 25px; */
+}
+
+.rdrDateRangeWrapperC {
+  display: flex !important;
+  position: absolute;
+  left: 0%;
+  top: 40px;
+  /* border: 1px solid #ccc; */
+  box-shadow: 0px 0px 8px 2px rgb(0 0 0 / 0.1);
+  z-index: 999;
+  background-color: #fff;
+  width: 300%;
+  padding: 10px;
+  /* border-radius: 25px; */
+}
+
+.rdrDefinedRangesWrapper {
+  font-size: 10px;
+  width: 20% !important;
+  border-right: solid 1px #eff2f7;
+  background: #fff;
+}
+
+.rdrCalendarWrapper {
+  color: #000000;
+  font-size: 10px;
+  width: 80% !important;
+}
+
+.rdrCalendarWrapperC {
+  color: #000000;
+  font-size: 10px;
+  width: 150% !important;
+}
+
+/* .table :where(.table-pin-cols tr th) {
+  position: sticky;
+  left: 0px;
+  right: 0px;
+  --tw-bg-opacity: 1;
+  background-color: var(--fallback-b1,oklch(var(--b1)/var(--tw-bg-opacity)));
+} */
+
+.pin-table {
+  position: sticky;
+  left: 0px;
+  right: 0px;
+  background-color: white;
+}
+
+.bringToBack {
+  position: fixed;
+  z-index: -1;
+}
+
+/* pagination */
+.active-pagination {
+  background-color: #2E66B9;
+  color: white;
+}
+
+/* SROLLBAR on Sidebar Start */
+.scrollsidebar::-webkit-scrollbar {
+  width: 5px;
+}
+
+.scrollsidebar::-webkit-scrollbar-thumb {
+  /* background-color: rgba(46, 102, 185, 0.7); */
+  /* background-color: #eee; */
+  background-color: rgb(0, 108, 178) !important;
+  border-radius: 10px;
+}
+
+.scrollsidebar::-webkit-scrollbar-thumb:hover {
+  background-color: darkgrey;
+  /* background-color: rgb(195, 219, 255); */
+}
+
+.scrollsidebar::-webkit-scrollbar-track {
+  background-color: rgb(0, 108, 178) !important;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 7px;
+}
+
+::-webkit-scrollbar-thumb {
+  /* background-color: rgba(46, 102, 185, 0.7); */
+  background-color: rgb(0, 108, 178) !important;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: darkgrey;
+  /* background-color: rgb(195, 219, 255); */
+}
+
+::-webkit-scrollbar-track {
+  background-color: rgba(128, 128, 128, 0.1) !important;
+  border: 1px;
+}
+
+/* SROLLBAR on Sidebar End*/
+
+.arrow {
+  display: inline-block;
+  transition: transform 0.5s ease;
+}
+
+.rotate {
+  transform: rotate(180deg);
+}
+
+/* new css for label */
+.form-group-label {
+  display: flex;
+  flex-direction: column;  /* Membuat label di atas input */
+  align-items: flex-end;   /* Menyusun elemen ke kanan */
+  padding: 10px;
+  border-radius: 8px;
+}
+
+.status-drafted {
+  background-color: #d3d3d3; /* light gray */
+  color: #fff;
+}
+
+.status-approved {
+  background-color: #4CAF50; /* green */
+  color: #fff;
+}
+
+.status-reviewed {
+  background-color: #FF9800; /* orange */
+  color: #fff;
+}
+
+.status-finished {
+  background-color: #2196F3; /* blue */
+  color: #fff;
+}
+
+/* Buka lebar tooltip pseudo-element agar ikut panjang teks */
+.tooltip[data-tip]::before {
+  max-width: unset !important;
+  white-space: nowrap !important;
+}

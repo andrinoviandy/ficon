@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>Dokumen Pengajuan</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 40px;
+      color: #333;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid #000;
+      padding-bottom: 10px;
+      margin-bottom: 20px;
+    }
+
+    .title {
+      font-size: 18px;
+      font-weight: bold;
+    }
+
+    .sub {
+      font-size: 12px;
+      color: #666;
+    }
+
+    /* INFO TABLE (NO BORDER) */
+    .info-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      margin-bottom: 20px;
+    }
+
+    .info-table td {
+      padding: 4px;
+    }
+
+    .label {
+      width: 120px;
+      color: #555;
+    }
+
+    /* DETAIL TABLE (WITH BORDER) */
+    .detail-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      margin-top: 10px;
+    }
+
+    .detail-table th,
+    .detail-table td {
+      border: 1px solid #000;
+      padding: 6px;
+    }
+
+    .detail-table th {
+      background: #eee;
+    }
+
+    .right {
+      text-align: right;
+    }
+
+    .total {
+      margin-top: 10px;
+      text-align: right;
+      font-weight: bold;
+    }
+
+    .footer {
+      margin-top: 60px;
+      display: flex;
+      justify-content: space-between;
+      text-align: center;
+      font-size: 12px;
+    }
+
+    .ttd {
+      width: 22%;
+    }
+
+    .space {
+      height: 60px;
+    }
+
+    @media print {
+      body {
+        margin: 30px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- HEADER -->
+  <div class="header">
+    <div>
+      <div class="title">Dokumen Pengajuan</div>
+      <div class="sub">Ringkasan Data Pengajuan dan Detail Transaksi</div>
+    </div>
+
+    <canvas id="qrcode"></canvas>
+  </div>
+
+  <!-- INFO (NO BORDER) -->
+  <table class="info-table">
+    <tr>
+      <td class="label">No Pengajuan</td>
+      <td>: PJ-2025-00045</td>
+
+      <td class="label">Jabatan Pembuat</td>
+      <td>: Assistant Manager</td>
+    </tr>
+
+    <tr>
+      <td class="label">Jenis</td>
+      <td>: Kasbon</td>
+
+      <td class="label">Cabang Pembuat</td>
+      <td>: Jakarta Pusat</td>
+    </tr>
+
+    <tr>
+      <td class="label">Tanggal</td>
+      <td>: 16 Mei 2025 10:30</td>
+
+      <td class="label">Nama</td>
+      <td>: Budi Santoso</td>
+    </tr>
+
+    <tr>
+      <td class="label">Metode</td>
+      <td>: Transfer Bank</td>
+
+      <td></td>
+      <td></td>
+    </tr>
+  </table>
+
+  <!-- DETAIL BIAYA (WITH BORDER) -->
+  <table class="detail-table">
+    <thead>
+      <tr>
+        <th>No</th>
+        <th>Jenis Biaya</th>
+        <th>Deskripsi</th>
+        <th class="right">Nominal</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td align="center">1</td>
+        <td>Konsumsi</td>
+        <td>Makan & meeting</td>
+        <td class="right">Rp 3.000.000</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- TOTAL -->
+  <div class="total">
+    Total: Rp 3.000.000
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <div class="ttd">
+      Dibuat Oleh
+      <div class="space"></div>
+      (Budi Santoso)
+    </div>
+
+    <div class="ttd">
+      Diperiksa
+      <div class="space"></div>
+      (........................)
+    </div>
+
+    <div class="ttd">
+      Disetujui
+      <div class="space"></div>
+      (........................)
+    </div>
+
+    <div class="ttd">
+      Mengetahui
+      <div class="space"></div>
+      (........................)
+    </div>
+  </div>
+
+  <script>
+    QRCode.toCanvas(document.getElementById("qrcode"), "PJ-2025-00045", {
+      width: 80
+    });
+  </script>
+
+</body>
+
+</html>
