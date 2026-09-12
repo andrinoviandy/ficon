@@ -1,13 +1,13 @@
 module.exports = {
   apps: [
     {
-      name: "kfcolls-frontend",
+      name: "ficon",
 
       script: "cmd",
 
-      args: "/c serve -s build -l 8002",
+      args: "/c serve -s build -l 8005",
 
-      cwd: "C:/Programs/kfcolls/frontend",
+      cwd: "C:/Programs/ficon",
 
       instances: 1,
 
