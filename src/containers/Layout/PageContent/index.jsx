@@ -13,7 +13,7 @@ const PageContent = () => {
     const location = useLocation();
     const mainContentRef = useRef(null);
     const { dimensionComponent, toggleSidebar } = useSelector(state => state.global);
-    document.title = "KFCOLLS " + (location?.state?.menu?.name ? ("| " + location?.state?.menu?.name) : '') + (location?.state?.menu?.submenu?.name ? ` - ${location?.state?.menu?.submenu?.name}` : "");
+    document.title = "FICON " + (location?.state?.menu?.name ? ("| " + location?.state?.menu?.name) : '') + (location?.state?.menu?.submenu?.name ? ` - ${location?.state?.menu?.submenu?.name}` : "");
 
     const [loginData, setLoginData] = useState({});
     const [listNotif, setListNotif] = useState([]);

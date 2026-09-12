@@ -1,0 +1,120 @@
+/* src/components/Dashboard.css */
+
+.dashboard {
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  background-color: #f5f6fa;
+}
+
+.greeting-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px;
+  background-color: #1e1e2d;
+  color: white;
+  border-radius: 10px;
+  margin-bottom: 20px;
+}
+
+.greeting-image img {
+  width: 150px;
+  height: auto;
+}
+
+.greeting-text {
+  margin-left: -150px;
+}
+
+.greeting-text h1 {
+  font-size: 24px;
+  margin: 0;
+}
+
+.greeting-text p {
+  margin: 5px 0 0;
+}
+
+.cards-section {
+  display: flex;
+  gap: 20px;
+}
+
+.card {
+  flex: 1;
+  padding: 10px;
+  border-radius: 10px;
+  color: white;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.card.blue {
+  background-color: #0066ff;
+}
+
+.card.green {
+  background-color: #00cc66;
+}
+
+.card.yellow {
+  background-color: #ffcc00;
+}
+
+.card.red {
+  background-color: #ff3333;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+}
+
+.card-icon {
+  width: 30px;
+  height: 30px;
+  margin-right: 10px;
+}
+
+.card-title {
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.card-body {
+  margin-top: 10px;
+}
+
+.card-amount {
+  font-size: 14px;
+  font-weight: bold;
+  width: 120px;
+  margin: 0;
+}
+
+.card-change {
+  display: flex;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.change-up {
+  color: #00e676;
+}
+
+.change-down {
+  color: #ff1744;
+}
+
+.arrow-up::after {
+  content: "↑";
+  margin-left: 5px;
+}
+
+.arrow-down::after {
+  content: "↓";
+  margin-left: 5px;
+}
+

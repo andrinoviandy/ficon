@@ -446,7 +446,7 @@ const Sidebar = () => {
                         text-orange-500
                       "
                     >
-                      KF
+                      FICON
                     </span>
 
                     <span
@@ -454,7 +454,7 @@ const Sidebar = () => {
                         text-primary
                       "
                     >
-                      COLLS
+                      
                     </span>
 
                   </div>
@@ -469,7 +469,7 @@ const Sidebar = () => {
                       mt-1
                     "
                   >
-                    Collection System
+                    Monitoring Dashboard
                   </div>
 
 
@@ -785,7 +785,7 @@ const Sidebar = () => {
                     text-gray-300
                   "
                   >
-                    KFCOLLS
+                    Financial Controller
                   </span>
 
                   <span
@@ -803,7 +803,7 @@ const Sidebar = () => {
                     text-gray-300
                   "
                   >
-                    Collection System
+                    @2026
                   </span>
 
                 </div>

@@ -49,6 +49,8 @@ import ManajemenUser from 'views/ManajemenUser'
 import KonfirmasiPiutang from 'views/KonfirmasiPiutang'
 import DataPenjualan from 'views/DataPenjualan'
 import DataPiutang from 'views/DataPiutang'
+import DashboardRasioBiaya from 'views/RasioBiaya'
+import DashboardPerformaPrincipal from 'views/PerformaPrincipal'
 // import Profile from 'views/ProfileUser'
 
 // const Dashboard = lazy(() => import('../pages/Dashboard'))
@@ -62,12 +64,12 @@ const routes = [
     component: Dashboard, // view rendered
   },
   {
-    path: '/dashboard',
-    component: Dashboard,
+    path: '/rasio-biaya',
+    component: DashboardRasioBiaya,
   },
   {
-    path: '/data-faktur',
-    component: MasterFaktur,
+    path: '/performa-principal',
+    component: DashboardPerformaPrincipal,
   },
   {
     path: '/data-penjualan',
