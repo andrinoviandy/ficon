@@ -20,6 +20,11 @@ import {
   FaFileExcel,
   FaSyncAlt,
   FaChartBar,
+  FaChartLine,
+  FaMoneyBillWave,
+  FaPercentage,
+  FaCalculator,
+  FaTable,
   FaDownload,
 } from 'react-icons/fa';
 
@@ -705,36 +710,47 @@ const ChartTooltip = ({
 const KpiCard = ({
   title,
   value,
+  icon,
+  iconClass,
+  cardClass,
+  accentClass,
 }) => {
 
   return (
 
     <div className="
       bg-white
+      rounded-xl
       border
       border-gray-200
       shadow-sm
-      px-3
-      py-4
+      p-4
       min-w-[175px]
+      overflow-hidden
+      transition-shadow
+      hover:shadow-md
+      ${cardClass}
     ">
 
-      <div className="
-        text-xs
-        text-gray-500
-        mb-2
-      ">
-        {title}
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+            {title}
+          </div>
+
+          <div className="mt-3 text-2xl font-bold text-gray-800">
+            {value}
+          </div>
+        </div>
+
+        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${iconClass}`}>
+          {icon}
+        </div>
       </div>
 
-      <div className="
-        text-2xl
-        font-semibold
-        text-gray-800
-      ">
-        {value}
+      <div className="mt-4 h-1 overflow-hidden rounded-full bg-gray-100">
+        <div className={`h-full w-2/5 rounded-full ${accentClass}`} />
       </div>
-
     </div>
 
   );
@@ -748,6 +764,8 @@ const KpiCard = ({
 const PerformanceChart = ({
   title,
   data,
+  icon,
+  iconClass,
 }) => {
 
   return (
@@ -757,14 +775,34 @@ const PerformanceChart = ({
       min-w-0
     ">
 
-      <h2 className="
-        text-base
-        font-bold
-        text-gray-800
-        mb-1
-      ">
-        {title}
-      </h2>
+      <div className="flex items-center gap-2.5 mb-1">
+        <div className={`
+          flex
+          h-9
+          w-9
+          items-center
+          justify-center
+          rounded-xl
+          ${iconClass}
+        `}>
+          {icon}
+        </div>
+
+        <div>
+          <h2 className="
+            text-base
+            font-bold
+            tracking-wide
+            text-gray-800
+          ">
+            {title}
+          </h2>
+
+          <p className="text-[10px] text-gray-400">
+            Tren penjualan, HPP dan persentase HPP
+          </p>
+        </div>
+      </div>
 
       <div className="
         flex
@@ -942,13 +980,26 @@ const PerformanceTable = ({
     ">
 
       <div className="
+        flex
+        items-center
+        gap-3
+        border-b
+        border-gray-100
         px-4
         py-3
-        text-lg
-        font-bold
-        text-gray-800
       ">
-        Rincian Performa
+        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+          <FaTable size={16} />
+        </div>
+
+        <div>
+          <div className="text-lg font-bold text-gray-800">
+            Rincian Performa
+          </div>
+          <div className="text-[10px] text-gray-400">
+            Ringkasan performa berdasarkan principal
+          </div>
+        </div>
       </div>
 
       <table className="
@@ -1918,6 +1969,10 @@ const DashboardPerformaPrincipal = () => {
                 summary.totalPenjualan
               )}`
             }
+            icon={<FaMoneyBillWave size={16} />}
+            iconClass="bg-orange-50 text-orange-600"
+            cardClass="bg-orange-50/60 border-orange-200"
+            accentClass="bg-orange-500"
           />
 
           <KpiCard
@@ -1927,6 +1982,10 @@ const DashboardPerformaPrincipal = () => {
                 summary.totalHPP
               )}`
             }
+            icon={<FaCalculator size={16} />}
+            iconClass="bg-blue-50 text-blue-700"
+            cardClass="bg-blue-50/60 border-blue-200"
+            accentClass="bg-blue-600"
           />
 
           <KpiCard
@@ -1936,6 +1995,10 @@ const DashboardPerformaPrincipal = () => {
                 summary.percentHPP
               )
             }
+            icon={<FaPercentage size={16} />}
+            iconClass="bg-yellow-50 text-yellow-600"
+            cardClass="bg-yellow-50/70 border-yellow-200"
+            accentClass="bg-yellow-500"
           />
 
           <KpiCard
@@ -1945,6 +2008,10 @@ const DashboardPerformaPrincipal = () => {
                 summary.percentMargin
               )
             }
+            icon={<FaChartLine size={16} />}
+            iconClass="bg-emerald-50 text-emerald-600"
+            cardClass="bg-emerald-50/60 border-emerald-200"
+            accentClass="bg-emerald-500"
           />
 
         </div>
@@ -2021,29 +2088,37 @@ const DashboardPerformaPrincipal = () => {
               grid
               grid-cols-1
               xl:grid-cols-2
-              gap-8
+              gap-5
               bg-[#e9eef8]
             ">
 
 
               {/* ALKES */}
 
-              <PerformanceChart
-                title="LINI ALKES"
-                data={
-                  alkesChartData
-                }
-              />
+              <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
+                <PerformanceChart
+                  title="LINI ALKES"
+                  data={
+                    alkesChartData
+                  }
+                  icon={<FaChartBar size={16} />}
+                  iconClass="bg-orange-50 text-orange-600"
+                />
+              </div>
 
 
               {/* NON ALKES */}
 
-              <PerformanceChart
-                title="LINI NON ALKES"
-                data={
-                  nonAlkesChartData
-                }
-              />
+              <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
+                <PerformanceChart
+                  title="LINI NON ALKES"
+                  data={
+                    nonAlkesChartData
+                  }
+                  icon={<FaChartLine size={16} />}
+                  iconClass="bg-blue-50 text-blue-700"
+                />
+              </div>
 
             </div>
 

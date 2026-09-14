@@ -1337,20 +1337,23 @@ const GaugeCard = ({
     <div
       className="
         bg-white
-        rounded-lg
-        shadow-[0_3px_15px_rgba(0,0,0,0.18)]
+        rounded-2xl
+        shadow-[0_8px_24px_rgba(15,23,42,0.08)]
         border
-        border-gray-100
+        border-slate-100
         overflow-hidden
+        relative
       "
     >
-      <div className="px-3 pt-2">
-        <div className="flex items-center gap-2">
+      <div className="h-1 w-full bg-gradient-to-r from-slate-200 via-blue-400 to-slate-200" />
+
+      <div className="px-4 pt-3">
+        <div className="flex items-start gap-2.5">
           <div
             className={`
-              w-7
-              h-7
-              rounded-lg
+              w-9
+              h-9
+              rounded-xl
               flex
               items-center
               justify-center
@@ -1363,10 +1366,11 @@ const GaugeCard = ({
 
           <div
             className="
-              text-[13px]
-              font-medium
-              text-gray-700
-              whitespace-nowrap
+              text-[11px]
+              font-semibold
+              leading-tight
+              text-slate-500
+              min-h-[30px]
             "
           >
             {title}
@@ -1378,6 +1382,11 @@ const GaugeCard = ({
         value={value}
         target={target}
       />
+
+      <div className="flex items-center justify-between border-t border-slate-100 px-4 pb-3 text-[10px] text-slate-400">
+        <span>Target</span>
+        <span className="font-bold text-slate-600">{formatPercent(target, 2)}</span>
+      </div>
     </div>
   );
 };
@@ -3307,23 +3316,25 @@ const DashboardRasioBiaya =
 
                 <div
                   className="
-                    h-[310px]
+                    h-[330px]
                     w-full
+                    overflow-x-auto
                   "
                 >
-                  <ResponsiveContainer
-                    width="100%"
-                    height="100%"
-                  >
+                  <div className="h-full min-w-[680px]">
+                    <ResponsiveContainer
+                      width="100%"
+                      height="100%"
+                    >
                     <LineChart
                       data={
                         mergedTrendData
                       }
                       margin={{
-                        top: 20,
+                        top: 42,
                         right: 10,
                         left: 0,
-                        bottom: 10,
+                        bottom: 18,
                       }}
                     >
                       <CartesianGrid
@@ -3397,7 +3408,12 @@ const DashboardRasioBiaya =
                           }
                           style={{
                             fontSize: 13,
-                            fill: '#555',
+                            fontWeight: 700,
+                            fill: '#1e40af',
+                            paintOrder: 'stroke',
+                            stroke: '#fff',
+                            strokeWidth: 4,
+                            strokeLinejoin: 'round',
                           }}
                         />
                       </Line>
@@ -3437,12 +3453,18 @@ const DashboardRasioBiaya =
                           }
                           style={{
                             fontSize: 13,
-                            fill: '#555',
+                            fontWeight: 700,
+                            fill: '#d97706',
+                            paintOrder: 'stroke',
+                            stroke: '#fff',
+                            strokeWidth: 4,
+                            strokeLinejoin: 'round',
                           }}
                         />
                       </Line>
                     </LineChart>
-                  </ResponsiveContainer>
+                    </ResponsiveContainer>
+                  </div>
                 </div>
               </div>
 
@@ -3472,23 +3494,26 @@ const DashboardRasioBiaya =
 
                 <div
                   className="
-                    h-[310px]
                     w-full
                   "
                 >
-                  <ResponsiveContainer
-                    width="100%"
-                    height="100%"
-                  >
+                  <div className="h-[330px] w-full overflow-x-auto">
+                    <div className="h-full min-w-[1500px]">
+                      <ResponsiveContainer
+                        width="100%"
+                        height="100%"
+                      >
                     <BarChart
                       data={
                         contributionData
                       }
+                      barCategoryGap="18%"
+                      barGap={6}
                       margin={{
-                        top: 30,
-                        right: 5,
+                        top: 48,
+                        right: 18,
                         left: 0,
-                        bottom: 10,
+                        bottom: 52,
                       }}
                     >
                       <CartesianGrid
@@ -3499,9 +3524,13 @@ const DashboardRasioBiaya =
                       <XAxis
                         dataKey="name"
                         tick={{
-                          fontSize: 9,
+                          fontSize: 11,
+                          fill: '#475569',
                         }}
                         interval={0}
+                        angle={-25}
+                        textAnchor="end"
+                        tickMargin={10}
                       />
 
                       <YAxis
@@ -3521,19 +3550,13 @@ const DashboardRasioBiaya =
                         }
                       />
 
-                      <Legend
-                        wrapperStyle={{
-                          fontSize:
-                            '10px',
-                        }}
-                      />
-
                       {/* BIAYA SDM */}
 
                       <Bar
                         dataKey="sdm"
                         name="% Biaya SDM"
                         fill="#ef0000"
+                        barSize={38}
                         radius={[
                           2,
                           2,
@@ -3557,7 +3580,10 @@ const DashboardRasioBiaya =
                           style={{
                             fontSize: 10,
                             fontWeight: 600,
-                            fill: '#555',
+                            fill: '#334155',
+                            paintOrder: 'stroke',
+                            stroke: '#fff',
+                            strokeWidth: 3,
                           }}
                         />
                       </Bar>
@@ -3568,6 +3594,7 @@ const DashboardRasioBiaya =
                         dataKey="operasional"
                         name="% Biaya Operasional"
                         fill="#442061"
+                        barSize={38}
                         radius={[
                           2,
                           2,
@@ -3591,7 +3618,10 @@ const DashboardRasioBiaya =
                           style={{
                             fontSize: 10,
                             fontWeight: 600,
-                            fill: '#555',
+                            fill: '#334155',
+                            paintOrder: 'stroke',
+                            stroke: '#fff',
+                            strokeWidth: 3,
                           }}
                         />
                       </Bar>
@@ -3602,6 +3632,7 @@ const DashboardRasioBiaya =
                         dataKey="pengiriman"
                         name="% Biaya Pengiriman"
                         fill="#858585"
+                        barSize={38}
                         radius={[
                           2,
                           2,
@@ -3625,7 +3656,10 @@ const DashboardRasioBiaya =
                           style={{
                             fontSize: 10,
                             fontWeight: 600,
-                            fill: '#555',
+                            fill: '#334155',
+                            paintOrder: 'stroke',
+                            stroke: '#fff',
+                            strokeWidth: 3,
                           }}
                         />
                       </Bar>
@@ -3636,6 +3670,7 @@ const DashboardRasioBiaya =
                         dataKey="komitmen"
                         name="% BOP Komitmen"
                         fill="#f4f000"
+                        barSize={38}
                         radius={[
                           2,
                           2,
@@ -3659,12 +3694,36 @@ const DashboardRasioBiaya =
                           style={{
                             fontSize: 10,
                             fontWeight: 600,
-                            fill: '#555',
+                            fill: '#334155',
+                            paintOrder: 'stroke',
+                            stroke: '#fff',
+                            strokeWidth: 3,
                           }}
                         />
                       </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 pt-3 text-[10px] font-semibold text-slate-600">
+                    <span className="flex items-center gap-1.5">
+                      <span className="h-2.5 w-2.5 rounded-sm bg-[#ef0000]" />
+                      % Biaya SDM
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <span className="h-2.5 w-2.5 rounded-sm bg-[#442061]" />
+                      % Biaya Operasional
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <span className="h-2.5 w-2.5 rounded-sm bg-[#858585]" />
+                      % Biaya Pengiriman
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <span className="h-2.5 w-2.5 rounded-sm bg-[#f4f000]" />
+                      % BOP Komitmen
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
