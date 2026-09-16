@@ -7,7 +7,7 @@ module.exports = {
 
       args: "/c serve -s build -l 8005",
 
-      cwd: "C:/Programs/Cost Tracking/ficon",
+      cwd: "C:/Programs/ficon",
 
       instances: 1,
 
