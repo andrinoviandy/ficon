@@ -40,6 +40,7 @@ import {
 } from 'react-icons/fa';
 
 import * as XLSX from 'xlsx';
+import { COA_CATEGORY_MAP } from './coaCategoryMapping';
 
 /* ============================================================
    DEFAULT TARGET
@@ -660,22 +661,105 @@ const containsAny = (
 };
 
 /* ============================================================
+   ACCOUNT NORMALIZER
+   ------------------------------------------------------------
+   Mapping COA menggunakan Account sebagai key.
+
+   Excel kadang membaca Account sebagai:
+   - number
+   - string
+   - scientific notation, contoh 6.101010101E+09
+   - string dengan .0 di belakang
+
+   Semua dinormalisasi ke bentuk string angka agar cocok
+   dengan key pada coaCategoryMapping.js.
+============================================================ */
+
+const normalizeAccount = (value) => {
+  if (
+    value === null ||
+    value === undefined ||
+    value === ''
+  ) {
+    return '';
+  }
+
+  let accountString = String(value)
+    .replace(/\u00A0/g, ' ')
+    .trim()
+    .replace(/\s/g, '');
+
+  if (!accountString) {
+    return '';
+  }
+
+  /*
+    Jika Account terbaca sebagai scientific notation.
+    Contoh:
+    6.101010101E+09
+    6,101010101E+09
+  */
+  const scientificString = accountString.replace(',', '.');
+
+  if (
+    /^[+-]?\d+(\.\d+)?[eE][+-]?\d+$/.test(
+      scientificString
+    )
+  ) {
+    const numericValue = Number(scientificString);
+
+    if (Number.isFinite(numericValue)) {
+      return String(
+        Math.trunc(numericValue)
+      );
+    }
+  }
+
+  /*
+    Jika Account terbaca seperti:
+    6101010101.0
+  */
+  if (
+    /^\d+\.0+$/.test(accountString)
+  ) {
+    return accountString.split('.')[0];
+  }
+
+  /*
+    Hilangkan separator yang umum jika ada.
+    COA mapping menggunakan angka tanpa separator.
+  */
+  accountString = accountString
+    .replace(/,/g, '')
+    .replace(/\./g, '');
+
+  /*
+    Sisakan angka saja.
+  */
+  return accountString.replace(
+    /\D/g,
+    ''
+  );
+};
+
+/* ============================================================
    ACCOUNT CLASSIFICATION
    ------------------------------------------------------------
-   Excel journal tidak mempunyai kolom:
+   PENTING:
+   - Struktur upload Excel TIDAK diubah.
+   - Penjualan tetap menggunakan logic lama.
+   - Biaya Komitmen tetap menggunakan logic lama.
+   - Kategori biaya lainnya sekarang diambil dari:
+       coaCategoryMapping.js
+     berdasarkan Account SAJA.
 
-   Penjualan
-   Biaya Komitmen
-   Biaya SDM
-   Biaya Operasional
-   Biaya Pengiriman
+   Mapping yang digunakan:
+   - BiayaSDM
+   - BiayaOperasional
+   - BiayaPengiriman
 
-   Maka jurnal diklasifikasikan berdasarkan:
-   - Account
-   - Account Desc
-   - Cost Center Desc
-   - Text
-   - Document type
+   Jika Account biaya belum ada di mapping:
+   -> BiayaOperasional sebagai fallback.
 ============================================================ */
 
 const classifyJournalRow = ({
@@ -686,11 +770,7 @@ const classifyJournalRow = ({
   documentType,
 }) => {
   const accountString =
-    String(
-      account || ''
-    )
-      .replace(/\s/g, '')
-      .trim();
+    normalizeAccount(account);
 
   const combinedText = [
     accountDesc,
@@ -704,6 +784,9 @@ const classifyJournalRow = ({
 
   /* ========================================================
      PENJUALAN / REVENUE
+     --------------------------------------------------------
+     Logic lama dipertahankan supaya trend ratio tetap
+     mempunyai Penjualan sebagai denominator.
   ======================================================== */
 
   const revenueKeywords = [
@@ -726,93 +809,20 @@ const classifyJournalRow = ({
   }
 
   /*
-    Pada struktur COA umum,
-    Account 4xxxxxxx sering digunakan
-    untuk revenue / pendapatan.
-
-    Kita gunakan sebagai fallback.
+    Fallback revenue berdasarkan Account 4xxxx.
   */
-
   if (
-    /^4/.test(
-      accountString
-    )
+    /^4/.test(accountString)
   ) {
     return 'Penjualan';
   }
 
   /* ========================================================
-     BIAYA SDM
-  ======================================================== */
-
-  const sdmKeywords = [
-    'gaji',
-    'salary',
-    'upah',
-    'wages',
-    'tunjangan',
-    'allowance',
-    'honor',
-    'honorarium',
-    'lembur',
-    'overtime',
-    'thr',
-    'bpjs',
-    'jamsostek',
-    'pesangon',
-    'pesangon',
-    'karyawan',
-    'pegawai',
-    'personalia',
-    'kepegawaian',
-    'direktur',
-    'direksi',
-    'komisaris',
-    'dewan komisaris',
-    'fasilitas dekom',
-    'employee',
-    'manpower',
-  ];
-
-  if (
-    containsAny(
-      combinedText,
-      sdmKeywords
-    )
-  ) {
-    return 'BiayaSDM';
-  }
-
-  /* ========================================================
-     BIAYA PENGIRIMAN
-  ======================================================== */
-
-  const shippingKeywords = [
-    'pengiriman',
-    'freight',
-    'ekspedisi',
-    'ongkir',
-    'delivery',
-    'transport pengiriman',
-    'angkutan',
-    'angkutan barang',
-    'logistik',
-    'logistic',
-    'shipping',
-    'cargo',
-  ];
-
-  if (
-    containsAny(
-      combinedText,
-      shippingKeywords
-    )
-  ) {
-    return 'BiayaPengiriman';
-  }
-
-  /* ========================================================
      BIAYA KOMITMEN
+     --------------------------------------------------------
+     Tetap menggunakan logic lama karena mapping COA yang
+     dibuat hanya mempunyai kategori SDM, Operasional,
+     dan Pengiriman.
   ======================================================== */
 
   const commitmentKeywords = [
@@ -832,17 +842,39 @@ const classifyJournalRow = ({
   }
 
   /* ========================================================
-     BIAYA OPERASIONAL
+     MAPPING COA
      --------------------------------------------------------
-     Semua biaya lain yang tidak termasuk:
-     - Revenue
-     - SDM
-     - Pengiriman
-     - Komitmen
-
-     masuk ke Operasional.
+     Mulai dari sini kategori biaya ditentukan berdasarkan
+     Account saja.
   ======================================================== */
 
+  const mappedCategory =
+    COA_CATEGORY_MAP[
+      accountString
+    ];
+
+  if (
+    mappedCategory === 'BiayaSDM'
+  ) {
+    return 'BiayaSDM';
+  }
+
+  if (
+    mappedCategory === 'BiayaPengiriman'
+  ) {
+    return 'BiayaPengiriman';
+  }
+
+  if (
+    mappedCategory === 'BiayaOperasional'
+  ) {
+    return 'BiayaOperasional';
+  }
+
+  /*
+    Account biaya yang belum ada di mapping tetap masuk
+    BiayaOperasional agar data dashboard tidak hilang.
+  */
   return 'BiayaOperasional';
 };
 
@@ -2850,7 +2882,7 @@ const DashboardRasioBiaya =
             <p className="text-[11px] text-blue-600 mt-3 font-semibold">
               Sheet yang dibaca: {previousYear} & {currentYear}
             </p>
-            <button
+            {/* <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
               className="mt-5 flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-sm transition"
@@ -2864,7 +2896,7 @@ const DashboardRasioBiaya =
               className="mt-3 text-[11px] text-blue-600 hover:text-blue-700 font-semibold transition"
             >
               Download Template Excel
-            </button>
+            </button> */}
           </div>
         ) : (
           <>
