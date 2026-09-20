@@ -555,6 +555,16 @@ const DashboardPerformaPrincipal = () => {
   ======================================================= */
 
   const handleExcelUpload = (event) => {
+    /*
+     * LARGE EXCEL SAFETY:
+     * Jangan gunakan Math.max(...array) pada array hasil Excel.
+     * Spread ke function argument dapat menyebabkan:
+     * Maximum call stack size exceeded
+     * ketika jumlah baris sangat besar.
+     *
+     * Perhitungan maksimum bulan sekarang menggunakan reduce()
+     * sehingga tidak membuat ribuan/ratusan ribu argument function.
+     */
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -589,7 +599,7 @@ const DashboardPerformaPrincipal = () => {
 
         setExcelData(normalized);
 
-        const years = [...new Set(normalized.map((row) => row.tahun))]
+        const years = Array.from(new Set(normalized.map((row) => row.tahun)))
           .filter(Boolean)
           .sort((a, b) => b - a);
 
@@ -629,7 +639,7 @@ const DashboardPerformaPrincipal = () => {
   ======================================================= */
 
   const yearOptions = useMemo(() => {
-    const years = [...new Set(excelData.map((row) => row.tahun))]
+    const years = Array.from(new Set(excelData.map((row) => row.tahun)))
       .filter(Boolean)
       .sort((a, b) => b - a);
 
@@ -640,7 +650,7 @@ const DashboardPerformaPrincipal = () => {
   }, [excelData]);
 
   const principalOptions = useMemo(() => {
-    const values = [...new Set(excelData.map((row) => row.principal))]
+    const values = Array.from(new Set(excelData.map((row) => row.principal)))
       .filter(Boolean)
       .sort((a, b) => a.localeCompare(b));
 
@@ -654,7 +664,7 @@ const DashboardPerformaPrincipal = () => {
   }, [excelData]);
 
   const regionalOptions = useMemo(() => {
-    const values = [...new Set(excelData.map((row) => row.regional))]
+    const values = Array.from(new Set(excelData.map((row) => row.regional)))
       .filter(Boolean)
       .sort((a, b) => a.localeCompare(b));
 
@@ -668,7 +678,7 @@ const DashboardPerformaPrincipal = () => {
   }, [excelData]);
 
   const lineOptions = useMemo(() => {
-    const values = [...new Set(excelData.map((row) => row.lini))]
+    const values = Array.from(new Set(excelData.map((row) => row.lini)))
       .filter(Boolean)
       .sort();
 
@@ -689,13 +699,16 @@ const DashboardPerformaPrincipal = () => {
       .map((row) => row.bulan)
       .filter((value) => value !== null && value !== undefined);
 
-    return [...new Set(values)].sort((a, b) => a - b);
+    return Array.from(new Set(values)).sort((a, b) => a - b);
   }, [excelData, filters.tahun]);
 
   const monthOptions = useMemo(() => {
     const maxMonth =
       availableMonths.length > 0
-        ? Math.max(...availableMonths)
+        ? availableMonths.reduce(
+            (max, value) => (value > max ? value : max),
+            availableMonths[0]
+          )
         : new Date().getMonth();
 
     return [
@@ -823,7 +836,10 @@ const DashboardPerformaPrincipal = () => {
         .filter((m) => m !== null);
 
       maxMonth = months.length
-        ? Math.max(...months)
+        ? months.reduce(
+            (max, value) => (value > max ? value : max),
+            months[0]
+          )
         : new Date().getMonth();
     } else {
       maxMonth = Number(filters.bulan);
@@ -944,7 +960,7 @@ const DashboardPerformaPrincipal = () => {
 
   const topSales = useMemo(
     () =>
-      [...principalTable]
+      principalTable.slice()
         .sort((a, b) => b.totalPenjualan - a.totalPenjualan)
         .slice(0, 10),
     [principalTable]
@@ -952,7 +968,7 @@ const DashboardPerformaPrincipal = () => {
 
   const topMargin = useMemo(
     () =>
-      [...principalTable]
+      principalTable.slice()
         .sort((a, b) => b.percentMargin - a.percentMargin)
         .slice(0, 10),
     [principalTable]
@@ -960,7 +976,7 @@ const DashboardPerformaPrincipal = () => {
 
   const bottomMargin = useMemo(
     () =>
-      [...principalTable]
+      principalTable.slice()
         .sort((a, b) => a.percentMargin - b.percentMargin)
         .slice(0, 5),
     [principalTable]
@@ -984,12 +1000,12 @@ const DashboardPerformaPrincipal = () => {
     const marginChange = summary.percentMargin - prevMarginPercent;
 
     const principalBest =
-      [...principalTable].sort(
+      principalTable.slice().sort(
         (a, b) => b.percentMargin - a.percentMargin
       )[0];
 
     const principalWorst =
-      [...principalTable].sort(
+      principalTable.slice().sort(
         (a, b) => a.percentMargin - b.percentMargin
       )[0];
 
