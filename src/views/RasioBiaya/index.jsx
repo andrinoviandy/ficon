@@ -113,6 +113,8 @@ const REQUIRED_COLUMNS = [
   'Month',
 ];
 
+const SALES_COLUMNS = ['Tahun', 'Bulan', 'Total Penjualan'];
+
 /* ============================================================
    HEADER NORMALIZER
 ============================================================ */
@@ -535,6 +537,105 @@ const normalizeMonth = (
     indonesiaMonths[
       stringValue
     ] || ''
+  );
+};
+
+/* ============================================================
+   SHEET PENJUALAN
+============================================================ */
+const normalizeSalesRows = (rows) => rows.map((row) => ({
+  Year: Number(getExcelValue(row, ['Tahun', 'Year'])),
+  Month: normalizeMonth(getExcelValue(row, ['Bulan', 'Month'])),
+  Penjualan: Math.abs(parseNumber(getExcelValue(row, ['Total Penjualan', 'Penjualan', 'Total Sales', 'Sales']))),
+})).filter((item) => item.Year && item.Month);
+
+const validateSalesHeaders = (worksheet) => {
+  const headerRows = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '', raw: true });
+  if (!headerRows?.length) return { valid: false, missing: SALES_COLUMNS };
+  const headers = (headerRows[0] || []).map((item) => normalizeHeader(item));
+  const missing = SALES_COLUMNS.filter((item) => !headers.includes(normalizeHeader(item)));
+  return { valid: missing.length === 0, missing };
+};
+
+const buildSalesMonthlyMap = (rows) => {
+  const map = {};
+
+  /*
+    PENTING:
+    Sheet Penjualan bisa mempunyai lebih dari satu baris
+    untuk Tahun + Bulan yang sama.
+
+    Contoh:
+    2026 | January | 100.000.000
+    2026 | January |  50.000.000
+
+    Total penjualan January harus menjadi:
+    150.000.000
+
+    Jadi JANGAN menggunakan assignment langsung (=),
+    tetapi jumlahkan seluruh baris pada periode yang sama.
+  */
+  rows.forEach((item) => {
+    const year = Number(item?.Year || 0);
+    const month = normalizeMonth(item?.Month);
+    const sales = Number(item?.Penjualan || 0);
+
+    if (!year || !month) {
+      return;
+    }
+
+    const key = `${year}-${month}`;
+
+    map[key] = (map[key] || 0) + sales;
+  });
+
+  return map;
+};
+
+/* ============================================================
+   GET TOTAL PENJUALAN PER BULAN
+   ------------------------------------------------------------
+   SEMUA grafik rasio dan kontribusi WAJIB menggunakan
+   nilai penjualan dari Sheet "Penjualan" sebagai denominator.
+
+   Rumus:
+
+   persentase = nilai biaya bulan tersebut
+                / total penjualan bulan tersebut
+                * 100
+
+   Tidak menggunakan total penjualan jurnal.
+   Tidak menggunakan total penjualan YTD.
+   Tidak menggunakan total penjualan tahunan.
+============================================================ */
+
+const getMonthlySales = (salesMap, year, month) => {
+  const key = `${Number(year)}-${normalizeMonth(month)}`;
+  const sales = Number(salesMap[key] || 0);
+
+  return Number.isFinite(sales) ? sales : 0;
+};
+
+const calculateMonthlySalesRatio = (
+  value,
+  salesMap,
+  year,
+  month
+) => {
+  const sales = getMonthlySales(
+    salesMap,
+    year,
+    month
+  );
+
+  if (sales <= 0) {
+    return 0;
+  }
+
+  return (
+    Number(value || 0) /
+    sales *
+    100
   );
 };
 
@@ -1681,6 +1782,8 @@ const DashboardRasioBiaya =
       setRawJournalData,
     ] = useState([]);
 
+    const [salesMonthlyData, setSalesMonthlyData] = useState([]);
+
     const [
       fileName,
       setFileName,
@@ -1793,7 +1896,12 @@ const DashboardRasioBiaya =
         return yearMatch && monthMatch && unitMatch && categoryMatch;
       });
 
-      return aggregateJournalRows(filteredRaw);
+      const aggregated = aggregateJournalRows(filteredRaw);
+      const salesMap = buildSalesMonthlyMap(salesMonthlyData);
+      return aggregated.map((item) => ({
+        ...item,
+        Penjualan: salesMap[`${item.Year}-${item.Month}`] ?? 0,
+      }));
     }, [
       data,
       rawJournalData,
@@ -1801,6 +1909,7 @@ const DashboardRasioBiaya =
       selectedMonth,
       selectedUnitKerja,
       selectedCategory,
+      salesMonthlyData,
     ]);
 
     /* ========================================================
@@ -1976,170 +2085,142 @@ const DashboardRasioBiaya =
     ======================================================== */
 
     const mergedTrendData = useMemo(() => {
-      const map = {};
-
+      const salesMap = buildSalesMonthlyMap(salesMonthlyData);
       const trendRaw = rawJournalData.filter((item) => {
-        const unitMatch =
-          selectedUnitKerja === 'ALL' ||
-          item.UnitKerja === selectedUnitKerja;
-
-        const categoryMatch =
-          selectedCategory === 'ALL' ||
-          item.KategoriBiaya === 'Penjualan' ||
-          item.KategoriBiaya === selectedCategory;
-
-        const monthMatch =
-          selectedMonth === 'ALL' ||
-          String(item.Month).toLowerCase() === String(selectedMonth).toLowerCase();
-
-        const yearMatch =
-          Number(item.Year) === previousYear ||
-          Number(item.Year) === currentYear;
-
-        return unitMatch && categoryMatch && monthMatch && yearMatch;
+        const unitMatch = selectedUnitKerja === 'ALL' || item.UnitKerja === selectedUnitKerja;
+        const categoryMatch = selectedCategory === 'ALL' || item.KategoriBiaya === 'Penjualan' || item.KategoriBiaya === selectedCategory;
+        const yearMatch = Number(item.Year) === previousYear || Number(item.Year) === currentYear;
+        return unitMatch && categoryMatch && yearMatch;
       });
+      const costData = aggregateJournalRows(trendRaw);
+      return MONTHS.map((month) => {
+        const previousItem = costData.find((item) => Number(item.Year) === previousYear && item.Month === month);
+        const currentItem = costData.find((item) => Number(item.Year) === currentYear && item.Month === month);
+        const getRatio = (item, year) => {
+          const cost =
+            Number(item?.BiayaKomitmen || 0) +
+            Number(item?.BiayaSDM || 0) +
+            Number(item?.BiayaOperasional || 0) +
+            Number(item?.BiayaPengiriman || 0);
 
-      aggregateJournalRows(trendRaw).forEach((item) => {
-        const month = item.Month;
-
-        if (!map[month]) {
-          map[month] = {
-            month,
-            ratioPreviousYear: null,
-            ratioCurrentYear: null,
-          };
-        }
-
-        const totalItem =
-          Number(item.BiayaKomitmen || 0) +
-          Number(item.BiayaSDM || 0) +
-          Number(item.BiayaOperasional || 0) +
-          Number(item.BiayaPengiriman || 0);
-
-        const ratio = calculateRatio(totalItem, item.Penjualan);
-
-        if (Number(item.Year) === previousYear) {
-          map[month].ratioPreviousYear = ratio;
-        }
-
-        if (Number(item.Year) === currentYear) {
-          map[month].ratioCurrentYear = ratio;
-        }
+          /*
+            Denominator MUTLAK dari Sheet Penjualan
+            untuk Tahun + Bulan yang sama.
+          */
+          return calculateMonthlySalesRatio(
+            cost,
+            salesMap,
+            year,
+            month
+          );
+        };
+        return { month, ratioPreviousYear: getRatio(previousItem, previousYear), ratioCurrentYear: getRatio(currentItem, currentYear) };
       });
-
-      return MONTHS.filter((month) => map[month]).map((month) => map[month]);
-    }, [
-      rawJournalData,
-      previousYear,
-      currentYear,
-      selectedMonth,
-      selectedUnitKerja,
-      selectedCategory,
-    ]);
+    }, [rawJournalData, salesMonthlyData, previousYear, currentYear, selectedUnitKerja, selectedCategory]);
 
     /* ========================================================
        CONTRIBUTION DATA
     ======================================================== */
 
-    const contributionData =
-      useMemo(() => {
-        const grouped = {};
+    const contributionData = useMemo(() => {
+      /*
+        KONTRIBUSI BIAYA:
+        - Hanya menampilkan 12 bulan pada TAHUN BERJALAN.
+        - Urutan selalu January s/d December.
+        - Setiap kategori dihitung terhadap TOTAL PENJUALAN
+          pada bulan dan tahun yang sama.
+        - Bulan yang belum memiliki jurnal tetap ditampilkan
+          dengan nilai 0 agar grafik selalu memiliki 12 bulan.
+      */
+      const salesMap = buildSalesMonthlyMap(salesMonthlyData);
 
-        sortedData.forEach(
-          (item) => {
-            const key =
-              `${item.Month} ${item.Year}`;
+      const grouped = {};
 
-            if (
-              !grouped[key]
-            ) {
-              grouped[key] = {
-                name: key,
-                sdm: 0,
-                operasional: 0,
-                pengiriman: 0,
-                komitmen: 0,
-                penjualan: 0,
-              };
-            }
+      // Inisialisasi 12 bulan tahun berjalan.
+      MONTHS.forEach((month) => {
+        grouped[month] = {
+          name: month,
+          year: currentYear,
+          month,
+          sdm: 0,
+          operasional: 0,
+          pengiriman: 0,
+          komitmen: 0,
+          penjualan: getMonthlySales(
+            salesMap,
+            currentYear,
+            month
+          ),
+        };
+      });
 
-            grouped[
-              key
-            ].sdm +=
-              Number(
-                item.BiayaSDM ||
-                  0
-              );
+      // Ambil biaya hanya dari tahun berjalan.
+      sortedData.forEach((item) => {
+        if (Number(item.Year) !== Number(currentYear)) {
+          return;
+        }
 
-            grouped[
-              key
-            ].operasional +=
-              Number(
-                item.BiayaOperasional ||
-                  0
-              );
+        const month = normalizeMonth(item.Month);
 
-            grouped[
-              key
-            ].pengiriman +=
-              Number(
-                item.BiayaPengiriman ||
-                  0
-              );
+        if (!month || !grouped[month]) {
+          return;
+        }
 
-            grouped[
-              key
-            ].komitmen +=
-              Number(
-                item.BiayaKomitmen ||
-                  0
-              );
-
-            grouped[
-              key
-            ].penjualan +=
-              Number(
-                item.Penjualan ||
-                  0
-              );
-          }
+        grouped[month].sdm += Number(item.BiayaSDM || 0);
+        grouped[month].operasional += Number(
+          item.BiayaOperasional || 0
         );
-
-        return Object.values(
-          grouped
-        ).map(
-          (item) => ({
-            name:
-              item.name,
-
-            sdm:
-              calculateRatio(
-                item.sdm,
-                item.penjualan
-              ),
-
-            operasional:
-              calculateRatio(
-                item.operasional,
-                item.penjualan
-              ),
-
-            pengiriman:
-              calculateRatio(
-                item.pengiriman,
-                item.penjualan
-              ),
-
-            komitmen:
-              calculateRatio(
-                item.komitmen,
-                item.penjualan
-              ),
-          })
+        grouped[month].pengiriman += Number(
+          item.BiayaPengiriman || 0
         );
-      }, [
-        sortedData,
-      ]);
+        grouped[month].komitmen += Number(
+          item.BiayaKomitmen || 0
+        );
+      });
+
+      return MONTHS.map((month) => {
+        const item = grouped[month];
+
+        return {
+          name: month,
+
+          /*
+            Semua series kontribusi menggunakan:
+
+            biaya bulan berjalan
+            -------------------- x 100
+            total penjualan bulan yang sama
+
+            Sumber denominator:
+            Sheet Penjualan.
+          */
+          sdm: calculateMonthlySalesRatio(
+            item.sdm,
+            salesMap,
+            currentYear,
+            month
+          ),
+          operasional: calculateMonthlySalesRatio(
+            item.operasional,
+            salesMap,
+            currentYear,
+            month
+          ),
+          pengiriman: calculateMonthlySalesRatio(
+            item.pengiriman,
+            salesMap,
+            currentYear,
+            month
+          ),
+          komitmen: calculateMonthlySalesRatio(
+            item.komitmen,
+            salesMap,
+            currentYear,
+            month
+          ),
+        };
+      });
+    }, [sortedData, salesMonthlyData, currentYear]);
 
     /* ========================================================
        TABLE DATA
@@ -2238,338 +2319,393 @@ const DashboardRasioBiaya =
        2025
     ======================================================== */
 
-    const handleUploadExcel =
-      (event) => {
-        const file =
-          event.target
-            .files?.[0];
+      const handleUploadExcel = (event) => {
+      const file = event.target.files?.[0];
 
-        if (!file) {
-          return;
-        }
+      if (!file) return;
 
-        setLoading(true);
+      setLoading(true);
 
-        const reader =
-          new FileReader();
+      const reader = new FileReader();
 
-        reader.onload = (
-          e
-        ) => {
-          try {
-            const binary =
-              e.target.result;
-
-            const workbook =
-              XLSX.read(
-                binary,
-                {
-                  type: 'binary',
-                  cellDates: true,
-                }
-              );
-
-            /*
-              Nama sheet yang wajib dicari.
-            */
-
-            const targetYears = [
-              previousYear,
-              currentYear,
-            ];
-
-            const availableSheets =
-              workbook.SheetNames;
-
-            const selectedSheets =
-              targetYears
-                .map(
-                  (year) => ({
-                    year,
-                    sheetName:
-                      availableSheets.find(
-                        (
-                          sheetName
-                        ) =>
-                          String(
-                            sheetName
-                          )
-                            .trim() ===
-                          String(
-                            year
-                          )
-                      ),
-                  })
-                )
-                .filter(
-                  (item) =>
-                    item.sheetName
-                );
-
-            /*
-              Kalau tidak ditemukan sheet
-              tahun berjalan maupun sebelumnya.
-            */
-
-            if (
-              selectedSheets.length ===
-              0
-            ) {
-              alert(
-                `Sheet Excel tidak ditemukan.\n\n` +
-                `Sistem mencari sheet:\n` +
-                `- ${currentYear}\n` +
-                `- ${previousYear}\n\n` +
-                `Contoh:\n` +
-                `${currentYear}\n` +
-                `${previousYear}`
-              );
-
-              setLoading(
-                false
-              );
-
-              return;
+      reader.onload = (e) => {
+        try {
+          /*
+           * PENTING:
+           * Gunakan ArrayBuffer, bukan readAsBinaryString.
+           *
+           * Selain lebih aman untuk file XLSX, ini juga membantu
+           * menghindari masalah parsing pada file Excel besar.
+           */
+          const workbook = XLSX.read(
+            e.target.result,
+            {
+              type: 'array',
+              cellDates: true,
+              dense: true,
             }
+          );
 
-            let allNormalizedData =
-              [];
+          /* ====================================================
+             SHEET PENJUALAN
+          ==================================================== */
 
-            let allRawJournalData =
-              [];
-
-            const validationErrors =
-              [];
-
-            /* ==================================================
-               LOOP SHEET
-            ================================================== */
-
-            selectedSheets.forEach(
-              ({
-                year,
-                sheetName,
-              }) => {
-                const worksheet =
-                  workbook.Sheets[
-                    sheetName
-                  ];
-
-                /*
-                  VALIDASI HEADER
-                */
-
-                const validation =
-                  validateExcelHeaders(
-                    worksheet
-                  );
-
-                if (
-                  !validation.valid
-                ) {
-                  validationErrors.push(
-                    {
-                      sheet:
-                        sheetName,
-                      missing:
-                        validation.missing,
-                    }
-                  );
-
-                  return;
-                }
-
-                /*
-                  Baca data.
-                */
-
-                const rows =
-                  XLSX.utils.sheet_to_json(
-                    worksheet,
-                    {
-                      defval: '',
-                      raw: false,
-                    }
-                  );
-
-                const normalized =
-                  normalizeExcelData(
-                    rows,
-                    year
-                  );
-
-                const rawNormalized =
-                  normalizeJournalRows(
-                    rows,
-                    year
-                  );
-
-                allNormalizedData =
-                  [
-                    ...allNormalizedData,
-                    ...normalized,
-                  ];
-
-                allRawJournalData =
-                  [
-                    ...allRawJournalData,
-                    ...rawNormalized,
-                  ];
-              }
+          const salesSheetName =
+            workbook.SheetNames.find(
+              (name) =>
+                String(name)
+                  .trim()
+                  .toLowerCase() === 'penjualan'
             );
 
-            /* ==================================================
-               VALIDATION ERROR
-            ================================================== */
-
-            if (
-              validationErrors.length >
-              0
-            ) {
-              const errorMessage =
-                validationErrors
-                  .map(
-                    (item) =>
-                      `Sheet ${item.sheet}:\n- ${item.missing.join(
-                        '\n- '
-                      )}`
-                  )
-                  .join(
-                    '\n\n'
-                  );
-
-              alert(
-                `Format kolom Excel tidak sesuai.\n\nKolom yang tidak ditemukan:\n\n${errorMessage}`
-              );
-
-              setLoading(
-                false
-              );
-
-              return;
-            }
-
-            /* ==================================================
-               NO DATA
-            ================================================== */
-
-            if (
-              allNormalizedData.length ===
-              0
-            ) {
-              alert(
-                `Data Excel tidak ditemukan pada sheet ${currentYear} atau ${previousYear}.`
-              );
-
-              setLoading(
-                false
-              );
-
-              return;
-            }
-
-            /*
-              Sort semua data.
-            */
-
-            allNormalizedData.sort(
-              (a, b) => {
-                if (
-                  Number(
-                    a.Year
-                  ) !==
-                  Number(
-                    b.Year
-                  )
-                ) {
-                  return (
-                    Number(
-                      a.Year
-                    ) -
-                    Number(
-                      b.Year
-                    )
-                  );
-                }
-
-                return (
-                  getMonthIndex(
-                    a.Month
-                  ) -
-                  getMonthIndex(
-                    b.Month
-                  )
-                );
-              }
-            );
-
-            /* ==================================================
-               SET DATA
-            ================================================== */
-
-            setData(
-              allNormalizedData
-            );
-
-            setRawJournalData(
-              allRawJournalData
-            );
-
-            setFileName(
-              file.name
-            );
-
-            setHasUploadedExcel(
-              true
-            );
-
-            setSelectedYear(
-              String(currentYear)
-            );
-
-            setSelectedMonth(
-              'ALL'
-            );
-
-            setSelectedUnitKerja(
-              'ALL'
-            );
-
-            setSelectedCategory(
-              'ALL'
-            );
-          } catch (error) {
-            console.error(
-              'Error read Excel:',
-              error
-            );
-
-            alert(
-              'Gagal membaca file Excel.'
-            );
-          } finally {
-            setLoading(
-              false
+          if (!salesSheetName) {
+            throw new Error(
+              'Sheet "Penjualan" wajib ada.'
             );
           }
-        };
 
-        reader.onerror =
-          () => {
-            setLoading(
-              false
+          const salesSheet =
+            workbook.Sheets[
+              salesSheetName
+            ];
+
+          const salesValidation =
+            validateSalesHeaders(
+              salesSheet
             );
 
-            alert(
-              'File Excel gagal dibaca.'
+          if (!salesValidation.valid) {
+            throw new Error(
+              `Kolom Sheet Penjualan kurang: ${salesValidation.missing.join(', ')}`
             );
+          }
+
+          const salesRows =
+            XLSX.utils.sheet_to_json(
+              salesSheet,
+              {
+                defval: '',
+                raw: false,
+              }
+            );
+
+          const normalizedSales =
+            normalizeSalesRows(
+              salesRows
+            ).filter(
+              (item) =>
+                item.Year === currentYear ||
+                item.Year === previousYear
+            );
+
+          /*
+           * Penjualan harus mempunyai 24 periode:
+           * 12 bulan tahun sebelumnya
+           * 12 bulan tahun berjalan
+           */
+          const salesMap =
+            buildSalesMonthlyMap(
+              normalizedSales
+            );
+
+          const missingMonths = [];
+
+          [previousYear, currentYear].forEach(
+            (year) => {
+              MONTHS.forEach(
+                (month) => {
+                  const key =
+                    `${year}-${month}`;
+
+                  if (
+                    !Object.prototype.hasOwnProperty.call(
+                      salesMap,
+                      key
+                    )
+                  ) {
+                    missingMonths.push(
+                      `${month} ${year}`
+                    );
+                  }
+                }
+              );
+            }
+          );
+
+          if (missingMonths.length) {
+            throw new Error(
+              `Sheet Penjualan harus berisi 24 periode. Kurang: ${missingMonths.join(', ')}`
+            );
+          }
+
+          /* ====================================================
+             SHEET JURNAL
+          ==================================================== */
+
+          const selectedSheets =
+            [previousYear, currentYear]
+              .map(
+                (year) => ({
+                  year,
+                  sheetName:
+                    workbook.SheetNames.find(
+                      (name) =>
+                        String(name).trim() ===
+                        String(year)
+                    ),
+                })
+              )
+              .filter(
+                (item) =>
+                  item.sheetName
+              );
+
+          if (
+            selectedSheets.length < 2
+          ) {
+            throw new Error(
+              `Sheet jurnal ${previousYear} dan ${currentYear} wajib tersedia.`
+            );
+          }
+
+          /*
+           * Jangan menggunakan:
+           *
+           * array.push(...data)
+           *
+           * karena jika data Excel sangat besar,
+           * JavaScript dapat menghasilkan:
+           *
+           * Maximum call stack size exceeded
+           *
+           * Kita gunakan push satu per satu melalui helper.
+           */
+          let allNormalizedData = [];
+          let allRawJournalData = [];
+
+          const appendArraySafely = (
+            target,
+            source
+          ) => {
+            if (
+              !Array.isArray(source) ||
+              source.length === 0
+            ) {
+              return;
+            }
+
+            for (
+              let i = 0;
+              i < source.length;
+              i += 1
+            ) {
+              target.push(
+                source[i]
+              );
+            }
           };
 
-        reader.readAsBinaryString(
-          file
+          const validationErrors = [];
+
+          selectedSheets.forEach(
+            ({
+              year,
+              sheetName,
+            }) => {
+              const worksheet =
+                workbook.Sheets[
+                  sheetName
+                ];
+
+              const validation =
+                validateExcelHeaders(
+                  worksheet
+                );
+
+              if (
+                !validation.valid
+              ) {
+                validationErrors.push({
+                  sheet: sheetName,
+                  missing:
+                    validation.missing,
+                });
+
+                return;
+              }
+
+              const rows =
+                XLSX.utils.sheet_to_json(
+                  worksheet,
+                  {
+                    defval: '',
+                    raw: false,
+                  }
+                );
+
+              /*
+               * Normalize sheet tahun.
+               */
+              const normalizedYearData =
+                normalizeExcelData(
+                  rows,
+                  year
+                );
+
+              /*
+               * Normalize raw journal untuk
+               * filter Unit Kerja / Kategori.
+               */
+              const rawYearData =
+                normalizeJournalRows(
+                  rows,
+                  year
+                );
+
+              /*
+               * Aman untuk data besar:
+               * tidak menggunakan spread operator.
+               */
+              appendArraySafely(
+                allNormalizedData,
+                normalizedYearData
+              );
+
+              appendArraySafely(
+                allRawJournalData,
+                rawYearData
+              );
+            }
+          );
+
+          if (
+            validationErrors.length
+          ) {
+            throw new Error(
+              validationErrors
+                .map(
+                  (item) =>
+                    `Sheet ${item.sheet}: ${item.missing.join(', ')}`
+                )
+                .join('\n')
+            );
+          }
+
+          if (
+            !allRawJournalData.length
+          ) {
+            throw new Error(
+              'Data jurnal tidak ditemukan.'
+            );
+          }
+
+          /*
+           * Sort data setelah seluruh sheet selesai
+           * diproses.
+           */
+          allNormalizedData.sort(
+            (a, b) => {
+              if (
+                Number(a.Year) !==
+                Number(b.Year)
+              ) {
+                return (
+                  Number(a.Year) -
+                  Number(b.Year)
+                );
+              }
+
+              return (
+                getMonthIndex(
+                  a.Month
+                ) -
+                getMonthIndex(
+                  b.Month
+                )
+              );
+            }
+          );
+
+          /* ====================================================
+             SET STATE
+          ==================================================== */
+
+          setData(
+            allNormalizedData
+          );
+
+          setRawJournalData(
+            allRawJournalData
+          );
+
+          /*
+           * Penjualan grafik berasal dari Sheet Penjualan,
+           * bukan dari jurnal.
+           */
+          setSalesMonthlyData(
+            normalizedSales
+          );
+
+          setFileName(
+            file.name
+          );
+
+          setHasUploadedExcel(
+            true
+          );
+
+          setSelectedYear(
+            String(currentYear)
+          );
+
+          setSelectedMonth(
+            'ALL'
+          );
+
+          setSelectedUnitKerja(
+            'ALL'
+          );
+
+          setSelectedCategory(
+            'ALL'
+          );
+
+        } catch (error) {
+          console.error(
+            'Error read Excel:',
+            error
+          );
+
+          alert(
+            error?.message ||
+            'Gagal membaca file Excel.'
+          );
+
+        } finally {
+          setLoading(
+            false
+          );
+        }
+      };
+
+      reader.onerror = () => {
+        setLoading(
+          false
+        );
+
+        alert(
+          'File Excel gagal dibaca.'
         );
       };
 
+      /*
+       * ArrayBuffer mencegah penggunaan
+       * binary string yang tidak diperlukan.
+       */
+      reader.readAsArrayBuffer(
+        file
+      );
+    };
     /* ========================================================
        RESET DATA
     ======================================================== */
@@ -2579,6 +2715,8 @@ const DashboardRasioBiaya =
         setData([]);
 
         setRawJournalData([]);
+
+        setSalesMonthlyData([]);
 
         setFileName('');
 
@@ -2616,77 +2754,16 @@ const DashboardRasioBiaya =
        Template mengikuti struktur Excel jurnal baru.
     ======================================================== */
 
-    const handleDownloadTemplate =
-      () => {
-        const template = [
-          {
-            'Profit Center':
-              '2000',
-
-            'Profit Center Desc':
-              'KFTD Pusat',
-
-            'Cost Center':
-              '20000000',
-
-            'Cost Center Desc':
-              'DEWAN KOMISARIS',
-
-            Account:
-              '6100000000',
-
-            'Account Desc':
-              'Gaji Komisaris',
-
-            'Amount in local currency':
-              100000000,
-
-            Assignment:
-              '20260125',
-
-            'Document Number':
-              '3300000000',
-
-            'Document type':
-              'HR',
-
-            'Document Date':
-              '2026-01-25',
-
-            'Posting Key':
-              '40',
-
-            Text: '',
-
-            'Posting Date':
-              '2026-01-25',
-
-            Month:
-              'January',
-          },
-        ];
-
-        const worksheet =
-          XLSX.utils.json_to_sheet(
-            template
-          );
-
-        const workbook =
-          XLSX.utils.book_new();
-
-        XLSX.utils.book_append_sheet(
-          workbook,
-          worksheet,
-          String(
-            currentYear
-          )
-        );
-
-        XLSX.writeFile(
-          workbook,
-          `Template_Rasio_Biaya_${currentYear}_${previousYear}.xlsx`
-        );
-      };
+    const handleDownloadTemplate = () => {
+      const workbook = XLSX.utils.book_new();
+      const salesTemplate = [];
+      [previousYear, currentYear].forEach((year) => MONTHS.forEach((month) => salesTemplate.push({ Tahun: year, Bulan: month, 'Total Penjualan': 0 })));
+      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(salesTemplate), 'Penjualan');
+      const journalTemplate = [{ 'Profit Center': '2000', 'Profit Center Desc': 'KFTD Pusat', 'Cost Center': '20000000', 'Cost Center Desc': 'DEWAN KOMISARIS', Account: '6100000000', 'Account Desc': 'Gaji Komisaris', 'Amount in local currency': 100000000, Assignment: '20260125', 'Document Number': '3300000000', 'Document type': 'HR', 'Document Date': '2026-01-25', 'Posting Key': '40', Text: '', 'Posting Date': '2026-01-25', Month: 'January' }];
+      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(journalTemplate), String(currentYear));
+      XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(journalTemplate), String(previousYear));
+      XLSX.writeFile(workbook, `Template_Rasio_Biaya_${currentYear}_${previousYear}.xlsx`);
+    };
 
     /* ========================================================
        FILTER YEAR
@@ -2706,69 +2783,22 @@ const DashboardRasioBiaya =
     ======================================================== */
 
     const insightComparison = useMemo(() => {
-      if (!rawJournalData.length) {
-        return {
-          totalBiaya: 0,
-          penjualan: 0,
-          ratio: null,
-        };
-      }
-
-      const compareYear = previousYear;
-
+      if (!rawJournalData.length) return { totalBiaya: 0, penjualan: 0, ratio: null };
       const rows = rawJournalData.filter((item) => {
-        const yearMatch = Number(item.Year) === compareYear;
-        const monthMatch =
-          selectedMonth === 'ALL' ||
-          String(item.Month).toLowerCase() === String(selectedMonth).toLowerCase();
-        const unitMatch =
-          selectedUnitKerja === 'ALL' ||
-          item.UnitKerja === selectedUnitKerja;
-        const categoryMatch =
-          selectedCategory === 'ALL' ||
-          item.KategoriBiaya === 'Penjualan' ||
-          item.KategoriBiaya === selectedCategory;
-
+        const yearMatch = Number(item.Year) === previousYear;
+        const monthMatch = selectedMonth === 'ALL' || String(item.Month).toLowerCase() === String(selectedMonth).toLowerCase();
+        const unitMatch = selectedUnitKerja === 'ALL' || item.UnitKerja === selectedUnitKerja;
+        const categoryMatch = selectedCategory === 'ALL' || item.KategoriBiaya === 'Penjualan' || item.KategoriBiaya === selectedCategory;
         return yearMatch && monthMatch && unitMatch && categoryMatch;
       });
-
-      const comparison = aggregateJournalRows(rows).reduce(
-        (acc, item) => {
-          acc.penjualan += Number(item.Penjualan || 0);
-          acc.komitmen += Number(item.BiayaKomitmen || 0);
-          acc.sdm += Number(item.BiayaSDM || 0);
-          acc.operasional += Number(item.BiayaOperasional || 0);
-          acc.pengiriman += Number(item.BiayaPengiriman || 0);
-          return acc;
-        },
-        {
-          penjualan: 0,
-          komitmen: 0,
-          sdm: 0,
-          operasional: 0,
-          pengiriman: 0,
-        }
-      );
-
-      comparison.totalBiaya =
-        comparison.komitmen +
-        comparison.sdm +
-        comparison.operasional +
-        comparison.pengiriman;
-
-      comparison.ratio = calculateRatio(
-        comparison.totalBiaya,
-        comparison.penjualan
-      );
-
+      const comparison = aggregateJournalRows(rows).reduce((acc, item) => {
+        acc.komitmen += Number(item.BiayaKomitmen || 0); acc.sdm += Number(item.BiayaSDM || 0); acc.operasional += Number(item.BiayaOperasional || 0); acc.pengiriman += Number(item.BiayaPengiriman || 0); return acc;
+      }, { penjualan: 0, komitmen: 0, sdm: 0, operasional: 0, pengiriman: 0 });
+      comparison.penjualan = salesMonthlyData.filter((item) => Number(item.Year) === previousYear && (selectedMonth === 'ALL' || item.Month === selectedMonth)).reduce((sum, item) => sum + Number(item.Penjualan || 0), 0);
+      comparison.totalBiaya = comparison.komitmen + comparison.sdm + comparison.operasional + comparison.pengiriman;
+      comparison.ratio = calculateRatio(comparison.totalBiaya, comparison.penjualan);
       return comparison;
-    }, [
-      rawJournalData,
-      previousYear,
-      selectedMonth,
-      selectedUnitKerja,
-      selectedCategory,
-    ]);
+    }, [rawJournalData, salesMonthlyData, previousYear, selectedMonth, selectedUnitKerja, selectedCategory]);
 
     /* ========================================================
        RENDER
